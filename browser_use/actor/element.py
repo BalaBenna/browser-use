@@ -206,7 +206,7 @@ class Element:
 						},
 						session_id=self._session_id,
 					)
-					await asyncio.sleep(0.05)
+					# Removed delay for performance
 					return
 				except Exception as js_e:
 					raise Exception(f'Failed to click element: {js_e}')
@@ -260,7 +260,7 @@ class Element:
 				await self._client.send.DOM.scrollIntoViewIfNeeded(
 					params={'backendNodeId': self._backend_node_id}, session_id=self._session_id
 				)
-				await asyncio.sleep(0.05)  # Wait for scroll to complete
+				# Removed delay for performance
 			except Exception:
 				pass
 
@@ -282,7 +282,7 @@ class Element:
 					},
 					session_id=self._session_id,
 				)
-				await asyncio.sleep(0.05)
+				# Removed delay for performance
 
 				# Mouse down
 				try:
@@ -300,7 +300,7 @@ class Element:
 						),
 						timeout=1.0,  # 1 second timeout for mousePressed
 					)
-					await asyncio.sleep(0.08)
+					# Removed delay for performance
 				except TimeoutError:
 					pass  # Don't sleep if we timed out
 
@@ -340,7 +340,7 @@ class Element:
 						},
 						session_id=self._session_id,
 					)
-					await asyncio.sleep(0.1)
+					# Removed delay for performance
 					return
 				except Exception as js_e:
 					raise Exception(f'Failed to click element: {e}')
@@ -363,7 +363,7 @@ class Element:
 			# Scroll element into view
 			try:
 				await cdp_client.send.DOM.scrollIntoViewIfNeeded(params={'backendNodeId': backend_node_id}, session_id=session_id)
-				await asyncio.sleep(0.01)
+				# Removed delay for performance
 			except Exception as e:
 				logger.warning(f'Failed to scroll element into view: {e}')
 
@@ -434,7 +434,7 @@ class Element:
 					)
 
 					# Small delay to emulate human typing speed
-					await asyncio.sleep(0.001)
+					# Removed delay for performance
 
 					# Send char event with carriage return
 					await cdp_client.send.Input.dispatchKeyEvent(
@@ -475,7 +475,7 @@ class Element:
 					)
 
 					# Small delay to emulate human typing speed
-					await asyncio.sleep(0.001)
+					# Removed delay for performance
 
 					# Step 2: Send char event (WITH text parameter) - this is crucial for text input
 					await cdp_client.send.Input.dispatchKeyEvent(
@@ -500,7 +500,7 @@ class Element:
 					)
 
 				# Add 18ms delay between keystrokes
-				await asyncio.sleep(0.018)
+				# Removed delay for performance
 
 		except Exception as e:
 			raise Exception(f'Failed to fill element: {str(e)}')

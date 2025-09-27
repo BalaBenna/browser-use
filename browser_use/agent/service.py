@@ -765,8 +765,34 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			raise ValueError('No model output to execute actions from')
 
 		self.logger.debug(f'⚡ Step {self.state.n_steps}: Executing {len(self.state.last_model_output.action)} actions...')
+
 		result = await self.multi_act(self.state.last_model_output.action)
 		self.logger.debug(f'✅ Step {self.state.n_steps}: Actions completed')
+
+		# --- Authentication detection and pause/resume logic ---
+		auth_keywords = [
+			'login', 'log in', 'sign in', 'authentication required', 'please authenticate',
+			'enter your credentials', 'session expired', 'access denied', 'unauthorized', 'signup', 'sign up'
+		]
+		should_pause_for_auth = False
+		for r in result:
+			# Check error or extracted_content for auth keywords
+			text = (r.error or '') + ' ' + (r.extracted_content or '')
+			if any(k in text.lower() for k in auth_keywords):
+				should_pause_for_auth = True
+				break
+
+		if should_pause_for_auth:
+			self.logger.warning(
+				'\n🔒 Authentication required! Please complete login/signup in the browser.\n'
+				'After you finish authenticating, resume the agent to continue.'
+			)
+			self.state.paused = True
+			self._external_pause_event.clear()
+			# Wait for resume
+			await self._external_pause_event.wait()
+			self.state.paused = False
+			self.logger.info('🔓 Authentication complete. Resuming agent execution...')
 
 		self.state.last_result = result
 

@@ -1,0 +1,116 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100%;
+  background-color: #343541;
+  color: #ececf1;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.header {
+  padding: 1rem;
+  background-color: #202123;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.messagesContainer {
+  flex-grow: 1;
+  padding: 1rem 2rem;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  max-width: 80%;
+  line-height: 1.6;
+}
+
+.userMessage {
+  background-color: #343541;
+  align-self: flex-end;
+}
+
+.qiMessage {
+  background-color: #444654;
+  align-self: flex-start;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+
+.userAvatar {
+  background-color: #7ecfff;
+  color: #23272b;
+}
+
+.qiAvatar {
+  background-color: #baff7e;
+  color: #23272b;
+}
+
+.formContainer {
+  padding: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background-color: #40414f;
+}
+
+.form {
+  display: flex;
+  gap: 1rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.input {
+  flex-grow: 1;
+  padding: 0.8rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #565869;
+  background-color: #40414f;
+  color: #ececf1;
+  font-size: 1rem;
+}
+
+.input:focus {
+  outline: none;
+  border-color: #baff7e;
+}
+
+.button {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  background-color: #baff7e;
+  color: #23272b;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.button:disabled {
+  background-color: #565869;
+  cursor: not-allowed;
+}
+
+.button:not(:disabled):hover {
+  background-color: #a3f062;
+}
