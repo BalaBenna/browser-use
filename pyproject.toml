@@ -26,6 +26,7 @@ dependencies = [
     "screeninfo>=0.8.1; platform_system != 'darwin'",
     "typing-extensions>=4.12.2",
     "uuid7>=0.1.0",
+    "uuid-extensions>=0.2.0",
     "authlib>=1.6.0",
     "google-genai>=1.29.0,<2.0.0",
     "openai>=1.99.2,<2.0.0",
