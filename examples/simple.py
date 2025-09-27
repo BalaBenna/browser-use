@@ -5,7 +5,7 @@ from browser_use import Agent, ChatGoogle
 load_dotenv()
 
 agent = Agent(
-	task='Find the number of stars of the browser-use repo',
+	task='play a dualipa top song on youtube',
 	llm=ChatGoogle(model='gemini-flash-latest'),
 	# browser=Browser(use_cloud=True),  # Uses Browser-Use cloud for the browser
 )
