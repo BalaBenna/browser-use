@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 # Action Input Models
 class SearchAction(BaseModel):
 	query: str
-	search_engine: str = 'duckduckgo'  # Options: 'duckduckgo', 'google', 'bing'
+	search_engine: str = 'google'  # Options: 'google', 'duckduckgo', 'bing'
 
 
 # Backward compatibility alias
