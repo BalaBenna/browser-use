@@ -14,6 +14,7 @@ from custom_tools import CUSTOM_TOOLS
 from agent_session import SESSION_MANAGER
 import uuid
 import logging
+from contextlib import asynccontextmanager
 
 # ---
 # 1. Load environment variables from .env file
@@ -62,7 +63,7 @@ async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSo
     )
     # Add custom tools to the agent
     for tool in CUSTOM_TOOLS:
-        agent.tools.registry.action("Custom tool")(tool)
+        agent.tools.registry.action("Custom tool")(tool["function"])
     # Run asynchronously and get the result
     result = await agent.run()
 
@@ -79,11 +80,14 @@ async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSo
         return str(result)
     return repr(result)
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic here
+    yield
+    # Shutdown logic here
+    pass
 
-@app.on_event("shutdown")
-def shutdown_event():
-    pass  # No agent to close now
+app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

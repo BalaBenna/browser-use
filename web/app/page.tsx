@@ -9,6 +9,7 @@ interface Message {
   thinking?: string;
   next_goal?: string;
   action?: any[];
+  id: string;
 }
 
 export default function Home() {
@@ -18,6 +19,24 @@ export default function Home() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const ws = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const savedMessages = localStorage.getItem("chatMessages");
+    if (savedMessages) {
+      setMessages(JSON.parse(savedMessages));
+    }
+    const savedSessionId = localStorage.getItem("sessionId");
+    if (savedSessionId) {
+      setSessionId(savedSessionId);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("chatMessages", JSON.stringify(messages));
+    if (sessionId) {
+      localStorage.setItem("sessionId", sessionId);
+    }
+  }, [messages, sessionId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -36,9 +55,9 @@ export default function Home() {
       const data = JSON.parse(event.data);
 
       if (data.step) {
-        setMessages((msgs) => [...msgs, { sender: "step", ...data }]);
+        setMessages((msgs) => [...msgs, { sender: "step", ...data, id: Date.now().toString() }]);
       } else if (data.final_result) {
-        setMessages((msgs) => [...msgs, { sender: "qi", text: data.final_result }]);
+        setMessages((msgs) => [...msgs, { sender: "qi", text: data.final_result, id: Date.now().toString() }]);
         setSessionId(data.session_id);
         setLoading(false);
       }
@@ -46,7 +65,7 @@ export default function Home() {
 
     ws.current.onerror = (error) => {
       console.error("WebSocket error:", error);
-      setMessages((msgs) => [...msgs, { sender: "qi", text: "Error: Could not connect to WebSocket." }]);
+      setMessages((msgs) => [...msgs, { sender: "qi", text: "Error: Could not connect to WebSocket.", id: Date.now().toString() }]);
       setLoading(false);
     };
 
@@ -62,7 +81,7 @@ export default function Home() {
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
     if (!input.trim() || !ws.current || ws.current.readyState !== WebSocket.OPEN) return;
-    const userMsg = { sender: "user" as const, text: input };
+    const userMsg = { sender: "user" as const, text: input, id: Date.now().toString() };
     setMessages((msgs) => [...msgs, userMsg]);
     setInput("");
     setLoading(true);
@@ -75,8 +94,8 @@ export default function Home() {
     <main className={styles.container}>
       <header className={styles.header}>QI Chat</header>
       <div className={styles.messagesContainer}>
-        {messages.map((msg, i) => (
-          <div key={i} className={`${styles.message} ${msg.sender === 'user' ? styles.userMessage : msg.sender === 'qi' ? styles.qiMessage : styles.stepMessage}`}>
+        {messages.map((msg) => (
+          <div key={msg.id} className={`${styles.message} ${msg.sender === 'user' ? styles.userMessage : msg.sender === 'qi' ? styles.qiMessage : styles.stepMessage}`}>
             <div className={`${styles.avatar} ${msg.sender === 'user' ? styles.userAvatar : msg.sender === 'qi' ? styles.qiAvatar : styles.stepAvatar}`}>
               {msg.sender === 'user' ? 'U' : msg.sender === 'qi' ? 'QI' : 'S'}
             </div>

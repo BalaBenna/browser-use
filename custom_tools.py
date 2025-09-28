@@ -70,9 +70,9 @@ def run_shell_command(command: str) -> str:
 
 # A list of all custom tools to be registered with the agent
 CUSTOM_TOOLS = [
-    list_files,
-    read_file,
-    write_file,
-    execute_python_code,
-    run_shell_command,
+    {"name": "list_files", "description": "Lists files in a directory.", "function": list_files},
+    {"name": "read_file", "description": "Reads the content of a file.", "function": read_file},
+    {"name": "write_file", "description": "Writes content to a file.", "function": write_file},
+    {"name": "execute_python_code", "description": "Executes Python code.", "function": execute_python_code},
+    {"name": "run_shell_command", "description": "Runs a shell command.", "function": run_shell_command},
 ]
