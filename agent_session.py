@@ -7,6 +7,8 @@ class AgentSession:
     """
     def __init__(self, session_id: str):
         self.session_id = session_id
+        # A dictionary to hold session-specific data
+        self.context_data: Dict[str, Any] = {}
         # A dictionary to hold variables for the Python interpreter
         self.python_variables: Dict[str, Any] = {}
         # A list of files the agent has written in this session
@@ -15,6 +17,7 @@ class AgentSession:
 
     def reset(self):
         """Resets the session state."""
+        self.context_data = {}
         self.python_variables = {}
         self.files_written = []
         print(f"AgentSession '{self.session_id}' has been reset.")
