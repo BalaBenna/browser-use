@@ -63,8 +63,8 @@ async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSo
     # Add custom tools to the agent
     for tool in CUSTOM_TOOLS:
         agent.tools.registry.action("Custom tool")(tool)
-    # Run synchronously and get the result
-    result = await asyncio.to_thread(agent.run_sync)
+    # Run asynchronously and get the result
+    result = await agent.run()
 
     # Extract the final, human-readable response
     if result and result.history:
@@ -117,7 +117,7 @@ async def websocket_endpoint(websocket: WebSocket):
             
             # We are not awaiting the result here, as the updates are sent via callback
             # The final result will be sent as the last message.
-            final_result = await asyncio.to_thread(run_agent_query, query, session_id, websocket)
+            final_result = await run_agent_query(query, session_id, websocket)
             
             await websocket.send_json({"final_result": final_result, "session_id": session_id})
 

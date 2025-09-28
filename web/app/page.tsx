@@ -3,43 +3,72 @@ import { useState, useRef, useEffect } from "react";
 import styles from "./chat.module.css";
 
 interface Message {
-  sender: "user" | "qi";
-  text: string;
+  sender: "user" | "qi" | "step";
+  text?: string;
+  step?: number;
+  thinking?: string;
+  next_goal?: string;
+  action?: any[];
 }
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null); // Add session state
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    const wsUrl = `ws://${location.hostname}:8001/ws`;
+    ws.current = new WebSocket(wsUrl);
+
+    ws.current.onopen = () => {
+      console.log("WebSocket connection established.");
+    };
+
+    ws.current.onmessage = (event) => {
+      console.log("Received message from server:", event.data);
+      const data = JSON.parse(event.data);
+
+      if (data.step) {
+        setMessages((msgs) => [...msgs, { sender: "step", ...data }]);
+      } else if (data.final_result) {
+        setMessages((msgs) => [...msgs, { sender: "qi", text: data.final_result }]);
+        setSessionId(data.session_id);
+        setLoading(false);
+      }
+    };
+
+    ws.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      setMessages((msgs) => [...msgs, { sender: "qi", text: "Error: Could not connect to WebSocket." }]);
+      setLoading(false);
+    };
+
+    ws.current.onclose = (event) => {
+      console.log("WebSocket connection closed:", event);
+    };
+
+    return () => {
+      ws.current?.close();
+    };
+  }, []);
+
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!input.trim() || !ws.current || ws.current.readyState !== WebSocket.OPEN) return;
     const userMsg = { sender: "user" as const, text: input };
     setMessages((msgs) => [...msgs, userMsg]);
     setInput("");
     setLoading(true);
-    try {
-      const resp = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg.text, session_id: sessionId }), // Send session ID
-      });
-      const data = await resp.json();
-      setMessages((msgs) => [...msgs, { sender: "qi", text: data.reply }]);
-      if (data.session_id) {
-        setSessionId(data.session_id); // Store new session ID
-      }
-    } catch (err) {
-      setMessages((msgs) => [...msgs, { sender: "qi", text: "Error: Could not reach backend." }]);
-    }
-    setLoading(false);
+
+    console.log("Sending message to server:", { message: userMsg.text, session_id: sessionId });
+    ws.current.send(JSON.stringify({ message: userMsg.text, session_id: sessionId }));
   }
 
   return (
@@ -47,11 +76,36 @@ export default function Home() {
       <header className={styles.header}>QI Chat</header>
       <div className={styles.messagesContainer}>
         {messages.map((msg, i) => (
-          <div key={i} className={`${styles.message} ${msg.sender === 'user' ? styles.userMessage : styles.qiMessage}`}>
-            <div className={`${styles.avatar} ${msg.sender === 'user' ? styles.userAvatar : styles.qiAvatar}`}>
-              {msg.sender === 'user' ? 'U' : 'QI'}
+          <div key={i} className={`${styles.message} ${msg.sender === 'user' ? styles.userMessage : msg.sender === 'qi' ? styles.qiMessage : styles.stepMessage}`}>
+            <div className={`${styles.avatar} ${msg.sender === 'user' ? styles.userAvatar : msg.sender === 'qi' ? styles.qiAvatar : styles.stepAvatar}`}>
+              {msg.sender === 'user' ? 'U' : msg.sender === 'qi' ? 'QI' : 'S'}
             </div>
-            <p>{msg.text}</p>
+            {msg.sender === 'step' ? (
+              <div>
+                <b>Step {msg.step}</b>
+                <p><em>Thinking:</em> {msg.thinking}</p>
+                <p><em>Next Goal:</em> {msg.next_goal}</p>
+                <ul>
+                  {msg.action?.map((a, index) => {
+                    const action = JSON.parse(a);
+                    const actionName = Object.keys(action)[0];
+                    const params = action[actionName];
+                    return (
+                      <li key={index}>
+                        <b>Action:</b> {actionName}
+                        <ul>
+                          {Object.entries(params).map(([key, value]) => (
+                            <li key={key}>{key}: {JSON.stringify(value)}</li>
+                          ))}
+                        </ul>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : (
+              <p>{msg.text}</p>
+            )}
           </div>
         ))}
         <div ref={messagesEndRef} />
