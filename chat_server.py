@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from browser_use import Agent, ChatGoogle
 from browser_use.tools.service import Tools
 from custom_tools import CUSTOM_TOOLS
+from file_tools import FILE_TOOLS
+from search_tools import SEARCH_TOOLS
 from agent_session import SESSION_MANAGER
 import uuid
 import logging
@@ -30,18 +32,19 @@ if not os.getenv("GOOGLE_API_KEY"):
 # ---
 # Configure logging
 # ---
-# ---
-# Configure logging
-# ---
 # Fix for UnicodeEncodeError on Windows
 # Use a handler that supports UTF-8 encoding
 handler = logging.StreamHandler()
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-handler.setFormatter(formatter)
+handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+# Get the root logger and remove any existing handlers
+root_logger = logging.getLogger()
+for h in root_logger.handlers:
+    root_logger.removeHandler(h)
+# Add the new handler
+root_logger.addHandler(handler)
+root_logger.setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
-logger.addHandler(handler)
-logger.setLevel(logging.INFO)
 
 
 async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] = None) -> str:
@@ -94,6 +97,12 @@ async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSo
     # Add custom tools to the agent
     for tool in CUSTOM_TOOLS:
         agent.tools.registry.action("Custom tool")(tool["function"])
+    # Add file tools to the agent
+    for tool in FILE_TOOLS:
+        agent.tools.registry.action("File tool")(tool["function"])
+    # Add search tools to the agent
+    for tool in SEARCH_TOOLS:
+        agent.tools.registry.action("Search tool")(tool["function"])
     # Run asynchronously and get the result
     result = await agent.run()
 
