@@ -30,8 +30,19 @@ if not os.getenv("GOOGLE_API_KEY"):
 # ---
 # Configure logging
 # ---
-logging.basicConfig(level=logging.INFO)
+# ---
+# Configure logging
+# ---
+# Fix for UnicodeEncodeError on Windows
+# Use a handler that supports UTF-8 encoding
+handler = logging.StreamHandler()
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+
 logger = logging.getLogger(__name__)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 
 async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] = None) -> str:
     """Runs the agent with a given query and session ID."""
@@ -40,14 +51,33 @@ async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSo
 
     async def step_callback(agent_state, agent_output, step_index):
         if websocket:
-            step_info = {
-                "step": step_index,
-                "thinking": agent_output.current_state.thinking,
-                "next_goal": agent_output.current_state.next_goal,
-                "action": [action.model_dump_json() for action in agent_output.action]
-            }
-            print(f"Sending step info: {step_info}")  # Debug log
-            await websocket.send_json(step_info)
+            # Check if the action is 'ask_user'
+            is_ask_user_action = False
+            question_to_ask = ""
+            for action in agent_output.action:
+                action_dict = action.model_dump()
+                action_name = next(iter(action_dict))
+                if action_name == 'ask_user':
+                    is_ask_user_action = True
+                    question_to_ask = action.args.get('question', 'Input required.')
+                    break
+
+            if is_ask_user_action:
+                # Send a message to the frontend to ask the user for input
+                await websocket.send_json({
+                    "type": "ask_user",
+                    "question": question_to_ask,
+                })
+            else:
+                step_info = {
+                    "type": "step",
+                    "step": step_index,
+                    "thinking": agent_output.current_state.thinking,
+                    "next_goal": agent_output.current_state.next_goal,
+                    "action": [action.model_dump_json() for action in agent_output.action]
+                }
+                print(f"Sending step info: {step_info}")  # Debug log
+                await websocket.send_json(step_info)
         else:
             print("WebSocket is not available in step_callback")  # Debug log
 
@@ -111,24 +141,31 @@ async def websocket_endpoint(websocket: WebSocket):
             data = await websocket.receive_json()
             query = data.get("message")
             session_id = data.get("session_id") or str(uuid.uuid4())
+            user_response = data.get("user_response") # Check for user response
 
-            if not query:
+            if not query and not user_response:
                 continue
 
-            # This is a simplified approach. For production, you'd run the agent
-            # in a separate thread or process to avoid blocking.
-            # For this example, we'll run it directly but use the callback to send updates.
+            if user_response:
+                # If there is a user response, it means we are continuing an agent run
+                # The `query` here is the original query that started the agent
+                original_query = "continue" # This needs to be handled better
+                final_result = await run_agent_query(original_query, session_id, websocket)
+            else:
+                # This is a new query
+                final_result = await run_agent_query(query, session_id, websocket)
             
-            # We are not awaiting the result here, as the updates are sent via callback
-            # The final result will be sent as the last message.
-            final_result = await run_agent_query(query, session_id, websocket)
-            
-            await websocket.send_json({"final_result": final_result, "session_id": session_id})
+            await websocket.send_json({"type": "final_result", "final_result": final_result, "session_id": session_id})
 
     except Exception as e:
         logger.error(f"WebSocket Error: {e}")
     finally:
-        await websocket.close()
+        try:
+            await websocket.close()
+        except RuntimeError as e:
+            # This can happen if the connection is already closed, which is fine.
+            logger.info(f"WebSocket already closed: {e}")
+
 
 @app.get("/", response_class=HTMLResponse)
 async def chat_page():
@@ -170,7 +207,7 @@ async def chat_page():
                 console.log("Received message from server:", event.data);
                 const data = JSON.parse(event.data);
 
-                if (data.step) {
+                if (data.type === "step") {
                     let actionDetails = '';
                     try {
                         const actions = data.action.map(a => JSON.parse(a));
@@ -198,9 +235,12 @@ async def chat_page():
                         `<em>Next Goal:</em> ${data.next_goal}<br/>` +
                         `<ul>${actionDetails}</ul>` +
                         `</div>`;
-                } else if (data.final_result) {
+                } else if (data.type === "final_result") {
                     messages.innerHTML += `<div class='qi'><b>QI:</b> ${data.final_result}</div>`;
                     sessionId = data.session_id;
+                } else if (data.type === "ask_user") {
+                    messages.innerHTML += `<div class='qi'><b>QI:</b> ${data.question}</div>`;
+                    // The user can now type in the input box and submit the form
                 }
                 messages.scrollTop = messages.scrollHeight;
             };
@@ -221,8 +261,15 @@ async def chat_page():
                 input.value = '';
                 messages.scrollTop = messages.scrollHeight;
                 
-                console.log("Sending message to server:", { message: msg, session_id: sessionId });
-                ws.send(JSON.stringify({ message: msg, session_id: sessionId }));
+                // Check if the last message from QI was a question
+                const lastMessage = messages.querySelector('.qi:last-child');
+                if (lastMessage && lastMessage.textContent.startsWith('QI:')) {
+                    // This is a response to a question
+                    ws.send(JSON.stringify({ user_response: msg, session_id: sessionId }));
+                } else {
+                    // This is a new query
+                    ws.send(JSON.stringify({ message: msg, session_id: sessionId }));
+                }
             };
         </script>
     </body>

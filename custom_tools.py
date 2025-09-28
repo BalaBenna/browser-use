@@ -68,6 +68,16 @@ def run_shell_command(command: str) -> str:
     except Exception as e:
         return f"An unexpected error occurred: {e}"
 
+def ask_user(question: str) -> str:
+    """
+    Asks the user for input. This is used when the agent is stuck
+    or needs additional information from the user.
+    """
+    # This function will be handled by the websocket server,
+    # which will send the question to the frontend.
+    # The function itself doesn't need to do anything.
+    return f"Asking user: {question}"
+
 # A list of all custom tools to be registered with the agent
 CUSTOM_TOOLS = [
     {"name": "list_files", "description": "Lists files in a directory.", "function": list_files},
@@ -75,4 +85,5 @@ CUSTOM_TOOLS = [
     {"name": "write_file", "description": "Writes content to a file.", "function": write_file},
     {"name": "execute_python_code", "description": "Executes Python code.", "function": execute_python_code},
     {"name": "run_shell_command", "description": "Runs a shell command.", "function": run_shell_command},
+    {"name": "ask_user", "description": "Asks the user for input.", "function": ask_user},
 ]

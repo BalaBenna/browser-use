@@ -281,10 +281,11 @@ class ChatGoogle(BaseChatModel):
 									text = response.text.strip()
 									if text.startswith('```json') and text.endswith('```'):
 										text = text[7:-3].strip()
-										self.logger.debug('🔧 Stripped ```json``` wrapper from response')
 									elif text.startswith('```') and text.endswith('```'):
 										text = text[3:-3].strip()
-										self.logger.debug('🔧 Stripped ``` wrapper from response')
+
+									# Attempt to fix unterminated strings
+									text = text.replace('\\"', '"').replace('"\n', '",\n')
 
 									# Parse the JSON text and validate with the Pydantic model
 									parsed_data = json.loads(text)
@@ -363,6 +364,9 @@ class ChatGoogle(BaseChatModel):
 									text = text[7:-3].strip()
 								elif text.startswith('```') and text.endswith('```'):
 									text = text[3:-3].strip()
+
+								# Attempt to fix unterminated strings
+								text = text.replace('\\"', '"').replace('"\n', '",\n')
 
 								# Parse and validate
 								parsed_data = json.loads(text)

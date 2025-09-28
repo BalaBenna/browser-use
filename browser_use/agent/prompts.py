@@ -341,9 +341,11 @@ Available tabs:
 			state_description += '<read_state>\n' + read_state_description + '\n</read_state>\n'
 
 		if self.page_filtered_actions:
-			state_description += '<page_specific_actions>\n'
-			state_description += self.page_filtered_actions + '\n'
-			state_description += '</page_specific_actions>\n'
+			state_description += '<page_specific_actions>\\n'
+			state_description += self.page_filtered_actions + '\\n'
+			state_description += '</page_specific_actions>\\n'
+
+		state_description += 'Respond with a JSON object with your thoughts and the next action to take.'
 
 		if use_vision is True and self.screenshots:
 			# Start with text description
