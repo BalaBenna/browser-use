@@ -9,6 +9,7 @@ import asyncio
 import os
 from dotenv import load_dotenv
 from browser_use import Agent, ChatGoogle
+from browser_use.tools.service import Tools
 from custom_tools import CUSTOM_TOOLS
 from agent_session import SESSION_MANAGER
 import uuid
@@ -31,7 +32,7 @@ if not os.getenv("GOOGLE_API_KEY"):
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] = None) -> str:
+async def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] = None) -> str:
     """Runs the agent with a given query and session ID."""
     # Get the session for this request
     session = SESSION_MANAGER.get_session(session_id)
@@ -44,20 +45,26 @@ def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] 
                 "next_goal": agent_output.current_state.next_goal,
                 "action": [action.model_dump_json() for action in agent_output.action]
             }
+            print(f"Sending step info: {step_info}")  # Debug log
             await websocket.send_json(step_info)
+        else:
+            print("WebSocket is not available in step_callback")  # Debug log
 
     # Create an Agent with the user query as the task
     agent = Agent(
         task=query,
         llm=ChatGoogle(model='gemini-flash-latest'),
-        headless=True,  # Run the browser in headless mode
-        custom_tools=CUSTOM_TOOLS,  # Register the new tools
+        headless=False,  # Run the browser in headless mode
+        tools=Tools(),  # Create a Tools object
         # Pass the session to the agent's context
         tool_context={"session": session},
         register_new_step_callback=step_callback,
     )
+    # Add custom tools to the agent
+    for tool in CUSTOM_TOOLS:
+        agent.tools.registry.action("Custom tool")(tool)
     # Run synchronously and get the result
-    result = agent.run_sync()
+    result = await asyncio.to_thread(agent.run_sync)
 
     # Extract the final, human-readable response
     if result and result.history:
@@ -148,10 +155,15 @@ async def chat_page():
             const input = document.getElementById('user-input');
             const messages = document.getElementById('messages');
             
-            const ws = new WebSocket(`ws://${location.host}/ws`);
+            const ws = new WebSocket(`ws://${location.hostname}:8001/ws`);
             let sessionId = null;
 
+            ws.onopen = (event) => {
+                console.log("WebSocket connection established.");
+            };
+
             ws.onmessage = (event) => {
+                console.log("Received message from server:", event.data);
                 const data = JSON.parse(event.data);
 
                 if (data.step) {
@@ -160,10 +172,19 @@ async def chat_page():
                         const actions = data.action.map(a => JSON.parse(a));
                         actionDetails = actions.map(a => {
                             const actionName = Object.keys(a)[0];
-                            const params = JSON.stringify(a[actionName]);
-                            return `<li><b>Action:</b> ${actionName}, <b>Params:</b> ${params}</li>`;
+                            const params = a[actionName];
+                            let paramString = '';
+                            if (typeof params === 'object' && params !== null) {
+                                paramString = Object.entries(params)
+                                    .map(([key, value]) => `<li>${key}: ${JSON.stringify(value)}</li>`)
+                                    .join('');
+                            } else {
+                                paramString = `<li>${JSON.stringify(params)}</li>`;
+                            }
+                            return `<li><b>Action:</b> ${actionName}<ul>${paramString}</ul></li>`;
                         }).join('');
                     } catch (e) {
+                        console.error("Error parsing action details:", e);
                         actionDetails = '<li>Could not parse action details.</li>';
                     }
 
@@ -180,6 +201,14 @@ async def chat_page():
                 messages.scrollTop = messages.scrollHeight;
             };
 
+            ws.onerror = (error) => {
+                console.error("WebSocket error:", error);
+            };
+
+            ws.onclose = (event) => {
+                console.log("WebSocket connection closed:", event);
+            };
+
             form.onsubmit = async (e) => {
                 e.preventDefault();
                 const msg = input.value.trim();
@@ -188,6 +217,7 @@ async def chat_page():
                 input.value = '';
                 messages.scrollTop = messages.scrollHeight;
                 
+                console.log("Sending message to server:", { message: msg, session_id: sessionId });
                 ws.send(JSON.stringify({ message: msg, session_id: sessionId }));
             };
         </script>
@@ -202,7 +232,7 @@ async def chat_api(req: ChatRequest):
         session_id = req.session_id or str(uuid.uuid4())
         
         # Call your agent logic here, passing the session_id
-        reply = await asyncio.to_thread(run_agent_query, req.message, session_id)
+        reply = await run_agent_query(req.message, session_id)
         
         return JSONResponse({"reply": reply, "session_id": session_id})
     except Exception as e:

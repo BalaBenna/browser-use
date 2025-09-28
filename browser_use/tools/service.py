@@ -150,7 +150,7 @@ class Tools(Generic[Context]):
 				await event
 				await event.event_result(raise_if_any=True, raise_if_none=False)
 				memory = f"Searched {params.search_engine.title()} for '{params.query}'"
-				msg = f'🔍  {memory}'
+				msg = f'  {memory}'
 				logger.info(msg)
 				return ActionResult(extracted_content=memory, long_term_memory=memory)
 			except Exception as e:
@@ -169,10 +169,10 @@ class Tools(Generic[Context]):
 
 				if params.new_tab:
 					memory = f'Opened new tab with URL {params.url}'
-					msg = f'🔗  Opened new tab with url {params.url}'
+					msg = f'  Opened new tab with url {params.url}'
 				else:
 					memory = f'Navigated to {params.url}'
-					msg = f'🔗 {memory}'
+					msg = f' {memory}'
 
 				logger.info(msg)
 				return ActionResult(extracted_content=msg, long_term_memory=memory)
@@ -209,7 +209,7 @@ class Tools(Generic[Context]):
 				event = browser_session.event_bus.dispatch(GoBackEvent())
 				await event
 				memory = 'Navigated back'
-				msg = f'🔙  {memory}'
+				msg = f'  {memory}'
 				logger.info(msg)
 				return ActionResult(extracted_content=memory)
 			except Exception as e:
@@ -223,7 +223,7 @@ class Tools(Generic[Context]):
 		async def wait(seconds: int = 3):
 			# Disabled all waits for maximum performance
 			memory = f'Waited for {seconds} seconds (instantly, no delay)'
-			logger.info(f'🕒 waited for {seconds} seconds (instantly, no delay)')
+			logger.info(f' waited for {seconds} seconds (instantly, no delay)')
 			return ActionResult(extracted_content=memory, long_term_memory=memory)
 
 		# Element Interaction Actions
@@ -259,7 +259,7 @@ class Tools(Generic[Context]):
 				elif isinstance(click_metadata, dict) and click_metadata.get('new_tab_opened'):
 					memory += ' - which opened a new tab'
 
-				msg = f'🖱️ {memory}'
+				msg = f' {memory}'
 				logger.info(msg)
 
 				# Include click coordinates in metadata if available
@@ -484,7 +484,7 @@ class Tools(Generic[Context]):
 				await event
 				await event.event_result(raise_if_any=True, raise_if_none=False)
 				msg = f'Successfully uploaded file to index {params.index}'
-				logger.info(f'📁 {msg}')
+				logger.info(f' {msg}')
 				return ActionResult(
 					extracted_content=msg,
 					long_term_memory=f'Uploaded file {params.path} to element {params.index}',
@@ -510,7 +510,7 @@ class Tools(Generic[Context]):
 				else:
 					memory = f'Switched to tab #{params.tab_id}'
 
-				logger.info(f'🔄  {memory}')
+				logger.info(f'  {memory}')
 				return ActionResult(extracted_content=memory, long_term_memory=memory)
 			except Exception as e:
 				logger.warning(f'Tab switch may have failed: {e}')
@@ -529,7 +529,7 @@ class Tools(Generic[Context]):
 				await event.event_result(raise_if_any=False, raise_if_none=False)  # Don't raise on errors
 
 				memory = f'Closed tab #{params.tab_id}'
-				logger.info(f'🗑️  {memory}')
+				logger.info(f'  {memory}')
 				return ActionResult(
 					extracted_content=memory,
 					long_term_memory=memory,
@@ -671,7 +671,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 					memory = f'Extracted content from {current_url} for query: {query}\nContent saved to file system: {save_result} and displayed in <read_state>.'
 					include_extracted_content_only_once = True
 
-				logger.info(f'📄 {memory}')
+				logger.info(f' {memory}')
 				return ActionResult(
 					extracted_content=extracted_content,
 					include_extracted_content_only_once=include_extracted_content_only_once,
@@ -789,7 +789,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 					await event.event_result(raise_if_any=True, raise_if_none=False)
 					long_term_memory = f'Scrolled {direction} {target} by {params.num_pages} pages ({viewport_height}px per page)'
 
-				msg = f'🔍 {long_term_memory}'
+				msg = f' {long_term_memory}'
 				logger.info(msg)
 				return ActionResult(extracted_content=msg, long_term_memory=long_term_memory)
 			except Exception as e:
@@ -808,7 +808,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 				await event
 				await event.event_result(raise_if_any=True, raise_if_none=False)
 				memory = f'Sent keys: {params.keys}'
-				msg = f'⌨️  {memory}'
+				msg = f'  {memory}'
 				logger.info(msg)
 				return ActionResult(extracted_content=memory, long_term_memory=memory)
 			except Exception as e:
@@ -827,7 +827,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 				# The handler returns None on success or raises an exception if text not found
 				await event.event_result(raise_if_any=True, raise_if_none=False)
 				memory = f'Scrolled to text: {text}'
-				msg = f'🔍  {memory}'
+				msg = f'  {memory}'
 				logger.info(msg)
 				return ActionResult(extracted_content=memory, long_term_memory=memory)
 			except Exception as e:
@@ -930,7 +930,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 				result = await file_system.append_file(file_name, content)
 			else:
 				result = await file_system.write_file(file_name, content)
-			logger.info(f'💾 {result}')
+			logger.info(f' {result}')
 			return ActionResult(extracted_content=result, long_term_memory=result)
 
 		@self.registry.action(
@@ -938,7 +938,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 		)
 		async def replace_file_str(file_name: str, old_str: str, new_str: str, file_system: FileSystem):
 			result = await file_system.replace_file_str(file_name, old_str, new_str)
-			logger.info(f'💾 {result}')
+			logger.info(f' {result}')
 			return ActionResult(extracted_content=result, long_term_memory=result)
 
 		@self.registry.action('Read file_name from file system')
@@ -963,7 +963,7 @@ You will be given a query and the markdown of a webpage that has been filtered t
 				memory = f'{display}{remaining_lines} more lines...' if remaining_lines > 0 else display
 			else:
 				memory = result
-			logger.info(f'💾 {memory}')
+			logger.info(f' {memory}')
 			return ActionResult(
 				extracted_content=result,
 				long_term_memory=memory,

@@ -93,27 +93,24 @@ def log_response(response: AgentOutput, registry=None, logger=None) -> None:
 	eval_goal = response.current_state.evaluation_previous_goal
 	if eval_goal:
 		if 'success' in eval_goal.lower():
-			emoji = '👍'
 			# Green color for success
-			logger.info(f'  \033[32m{emoji} Eval: {eval_goal}\033[0m')
+			logger.info(f'  \033[32mEval: {eval_goal}\033[0m')
 		elif 'failure' in eval_goal.lower():
-			emoji = '⚠️'
 			# Red color for failure
-			logger.info(f'  \033[31m{emoji} Eval: {eval_goal}\033[0m')
+			logger.info(f'  \033[31mEval: {eval_goal}\033[0m')
 		else:
-			emoji = '❔'
 			# No color for unknown/neutral
-			logger.info(f'  {emoji} Eval: {eval_goal}')
+			logger.info(f'  Eval: {eval_goal}')
 
 	# Always log memory if present
 	if response.current_state.memory:
-		logger.debug(f'🧠 Memory: {response.current_state.memory}')
+		logger.debug(f'Memory: {response.current_state.memory}')
 
 	# Only log next goal if it's not empty
 	next_goal = response.current_state.next_goal
 	if next_goal:
 		# Blue color for next goal
-		logger.info(f'  \033[34m🎯 Next goal: {next_goal}\033[0m')
+		logger.info(f'  \033[34mNext goal: {next_goal}\033[0m')
 	else:
 		logger.info('')  # Add empty line for spacing
 
@@ -121,7 +118,7 @@ def log_response(response: AgentOutput, registry=None, logger=None) -> None:
 Context = TypeVar('Context')
 
 
-AgentHookFunc = Callable[['Agent'], Awaitable[None]]
+AgentHookFunc = Callable [['Agent'], Awaitable[None]]
 
 
 class Agent(Generic[Context, AgentStructuredOutput]):
@@ -141,13 +138,13 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		initial_actions: list[dict[str, dict[str, Any]]] | None = None,
 		# Cloud Callbacks
 		register_new_step_callback: (
-			Callable[['BrowserStateSummary', 'AgentOutput', int], None]  # Sync callback
-			| Callable[['BrowserStateSummary', 'AgentOutput', int], Awaitable[None]]  # Async callback
+			Callable [['BrowserStateSummary', 'AgentOutput', int], None]  # Sync callback
+			| Callable [['BrowserStateSummary', 'AgentOutput', int], Awaitable[None]]  # Async callback
 			| None
 		) = None,
 		register_done_callback: (
-			Callable[['AgentHistoryList'], Awaitable[None]]  # Async Callback
-			| Callable[['AgentHistoryList'], None]  # Sync Callback
+			Callable [['AgentHistoryList'], Awaitable[None]]  # Async Callback
+			| Callable [['AgentHistoryList'], None]  # Sync Callback
 			| None
 		) = None,
 		register_external_agent_status_raise_error_callback: Callable[[], Awaitable[bool]] | None = None,
@@ -470,7 +467,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			if self.browser_session and self.browser_session.agent_focus and self.browser_session.agent_focus.target_id
 			else '--'
 		)
-		return logging.getLogger(f'browser_use.Agent🅰 {self.task_id[-4:]} ⇢ 🅑 {_browser_session_id[-4:]} 🅣 {_current_target_id}')
+		return logging.getLogger(f'browser_use.Agent.{self.task_id[-4:]}')
 
 	@property
 	def browser_profile(self) -> BrowserProfile:
@@ -817,14 +814,14 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 			success = self.state.last_result[-1].success
 			if success:
 				# Green color for success
-				self.logger.info(f'\n📄 \033[32m Final Result:\033[0m \n{self.state.last_result[-1].extracted_content}\n\n')
+				self.logger.info(f'\n \033[32m Final Result:\033[0m \n{self.state.last_result[-1].extracted_content}\n\n')
 			else:
 				# Red color for failure
-				self.logger.info(f'\n📄 \033[31m Final Result:\033[0m \n{self.state.last_result[-1].extracted_content}\n\n')
-			if self.state.last_result[-1].attachments:
-				total_attachments = len(self.state.last_result[-1].attachments)
-				for i, file_path in enumerate(self.state.last_result[-1].attachments):
-					self.logger.info(f'👉 Attachment {i + 1 if total_attachments > 1 else ""}: {file_path}')
+				self.logger.info(f'\n \033[31m Final Result:\033[0m \n{self.state.last_result[-1].extracted_content}\n\n')
+		if self.state.last_result[-1].attachments:
+			total_attachments = len(self.state.last_result[-1].attachments)
+			for i, file_path in enumerate(self.state.last_result[-1].attachments):
+				self.logger.info(f'Attachment {i + 1 if total_attachments > 1 else ""}: {file_path}')
 
 	async def _handle_step_error(self, error: Exception) -> None:
 		"""Handle all types of errors that can occur during a step"""
@@ -1225,21 +1222,21 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 	async def _log_agent_run(self) -> None:
 		"""Log the agent run"""
 		# Blue color for task
-		self.logger.info(f'\033[34m🚀 Task: {self.task}\033[0m')
+		self.logger.info(f'\033[34mTask: {self.task}\033[0m')
 
-		self.logger.debug(f'🤖 Browser-Use Library Version {self.version} ({self.source})')
+		self.logger.debug(f'Browser-Use Library Version {self.version} ({self.source})')
 
 		# Check for latest version and log upgrade message if needed
 		latest_version = await check_latest_browser_use_version()
 		if latest_version and latest_version != self.version:
 			self.logger.info(
-				f'📦 Newer version available: {latest_version} (current: {self.version}). Upgrade with: uv add browser-use@{latest_version}'
+				f'Newer version available: {latest_version} (current: {self.version}). Upgrade with: uv add browser-use@{latest_version}'
 			)
 
 	def _log_first_step_startup(self) -> None:
 		"""Log startup message only on the first step"""
 		if len(self.history.history) == 0:
-			self.logger.info(f'🧠 Starting a browser-use version {self.version} with model={self.llm.model}')
+			self.logger.info(f'Starting a browser-use version {self.version} with model={self.llm.model}')
 
 	def _log_step_context(self, browser_state_summary: BrowserStateSummary) -> None:
 		"""Log step context information"""
@@ -1247,7 +1244,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		url_short = url[:50] + '...' if len(url) > 50 else url
 		interactive_count = len(browser_state_summary.dom_state.selector_map) if browser_state_summary else 0
 		self.logger.info('\n')
-		self.logger.info(f'📍 Step {self.state.n_steps}:')
+		self.logger.info(f'Step {self.state.n_steps}:')
 		self.logger.debug(f'Evaluating page with {interactive_count} interactive elements on: {url_short}')
 
 	def _log_next_action_summary(self, parsed: 'AgentOutput') -> None:
@@ -1286,9 +1283,9 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		# Create summary based on single vs multi-action
 		if action_count == 1:
-			self.logger.info(f'☝️ Decided next action: {action_name}{param_str}')
+			self.logger.info(f'Decided next action: {action_name}{param_str}')
 		else:
-			summary_lines = [f'✌️ Decided next {action_count} multi-actions:']
+			summary_lines = [f'Decided next {action_count} multi-actions:']
 			for i, detail in enumerate(action_details):
 				summary_lines.append(f'          {i + 1}. {detail}')
 			self.logger.info('\n'.join(summary_lines))
@@ -1307,12 +1304,12 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		# Format success/failure indicators
 		success_indicator = f'✅ {success_count}' if success_count > 0 else ''
-		failure_indicator = f'❌ {failure_count}' if failure_count > 0 else ''
+		failure_indicator = f' {failure_count}' if failure_count > 0 else ''
 		status_parts = [part for part in [success_indicator, failure_indicator] if part]
-		status_str = ' | '.join(status_parts) if status_parts else '✅ 0'
+		status_str = ' | '.join(status_parts) if status_parts else ' 0'
 
 		self.logger.debug(
-			f'📍 Step {self.state.n_steps}: Ran {action_count} action{"" if action_count == 1 else "s"} in {step_duration:.2f}s: {status_str}'
+			f'Step {self.state.n_steps}: Ran {action_count} action{"" if action_count == 1 else "s"} in {step_duration:.2f}s: {status_str}'
 		)
 
 	def _log_agent_event(self, max_steps: int, agent_run_error: str | None = None) -> None:
@@ -1320,7 +1317,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 
 		token_summary = self.token_cost_service.get_usage_tokens_for_model(self.llm.model)
 
-		# Prepare action_history data correctly
+		# Prepare action_history data
 		action_history_data = []
 		for item in self.history.history:
 			if item.model_output and item.model_output.action:
@@ -1719,7 +1716,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 						ActionResult(
 							extracted_content=msg,
 							include_in_memory=True,
-							long_term_memory=msg,
+													long_term_memory=msg,
 						)
 					)
 					break
@@ -1727,7 +1724,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 				# Check for new elements that appeared
 				new_element_hashes = {e.parent_branch_hash() for e in new_selector_map.values()}
 				if check_for_new_elements and not new_element_hashes.issubset(cached_element_hashes):
-					# next action requires index but there are new elements on the page
+								
 					# log difference in len debug
 					self.logger.debug(f'New elements: {abs(len(new_element_hashes) - len(cached_element_hashes))}')
 					remaining_actions_str = get_remaining_actions_str(actions, i)
@@ -1764,7 +1761,7 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 				action_params = str(action_params)
 				action_params = f'{action_params[:522]}...' if len(action_params) > 528 else action_params
 				time_start = time.time()
-				self.logger.info(f'  🦾 {blue}[ACTION {i + 1}/{total_actions}]{reset} {action_params}')
+				self.logger.info(f'  [ACTION {i + 1}/{total_actions}] {action_params}')
 
 				result = await self.tools.act(
 					action=action,
@@ -1800,9 +1797,9 @@ class Agent(Generic[Context, AgentStructuredOutput]):
 		# self._task_end_time = time.time()
 		# self._task_duration = self._task_end_time - self._task_start_time TODO: this is not working when using take_step
 		if self.history.is_successful():
-			self.logger.info('✅ Task completed successfully')
+			self.logger.info('Task completed successfully')
 		else:
-			self.logger.info('❌ Task completed without success')
+			self.logger.info('Task completed without success')
 
 	async def rerun_history(
 		self,

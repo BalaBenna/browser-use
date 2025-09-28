@@ -43,7 +43,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			# Check if session is alive before attempting any operations
 			if not self.browser_session.agent_focus or not self.browser_session.agent_focus.target_id:
 				error_msg = 'Cannot execute click: browser session is corrupted (target_id=None). Session may have crashed.'
-				self.logger.error(f'⚠️ {error_msg}')
+				self.logger.error(f'WARNING: {error_msg}')
 				raise BrowserError(error_msg)
 
 			# Use the provided node
@@ -71,10 +71,10 @@ class DefaultActionWatchdog(BaseWatchdog):
 			# Build success message
 			if download_path:
 				msg = f'Downloaded file to {download_path}'
-				self.logger.info(f'💾 {msg}')
+				self.logger.info(f'INFO: {msg}')
 			else:
 				msg = f'Clicked button {element_node.node_name}: {element_node.get_all_children_text(max_depth=2)}'
-				self.logger.debug(f'🖱️ {msg}')
+				self.logger.debug(f'INFO: {msg}')
 			self.logger.debug(f'Element xpath: {element_node.xpath}')
 
 			# Wait a bit for potential new tab to be created
@@ -96,7 +96,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			if new_target_ids:
 				new_tab_msg = 'New tab opened - switching to it'
 				msg += f' - {new_tab_msg}'
-				self.logger.info(f'🔗 {new_tab_msg}')
+				self.logger.info(f'INFO: {new_tab_msg}')
 
 				if not event.while_holding_ctrl:
 					# if while_holding_ctrl=False it means agent was not expecting a new tab to be opened
@@ -132,11 +132,11 @@ class DefaultActionWatchdog(BaseWatchdog):
 				# Log with sensitive data protection
 				if event.is_sensitive:
 					if event.sensitive_key_name:
-						self.logger.info(f'⌨️ Typed <{event.sensitive_key_name}> to the page (current focus)')
+						self.logger.info(f'Typed <{event.sensitive_key_name}> to the page (current focus)')
 					else:
-						self.logger.info('⌨️ Typed <sensitive> to the page (current focus)')
+						self.logger.info('Typed <sensitive> to the page (current focus)')
 				else:
-					self.logger.info(f'⌨️ Typed "{event.text}" to the page (current focus)')
+					self.logger.info(f'Typed "{event.text}" to the page (current focus)')
 				return None  # No coordinates available for page typing
 			else:
 				try:
@@ -150,11 +150,11 @@ class DefaultActionWatchdog(BaseWatchdog):
 					# Log with sensitive data protection
 					if event.is_sensitive:
 						if event.sensitive_key_name:
-							self.logger.info(f'⌨️ Typed <{event.sensitive_key_name}> into element with index {index_for_logging}')
+							self.logger.info(f'Typed <{event.sensitive_key_name}> into element with index {index_for_logging}')
 						else:
-							self.logger.info(f'⌨️ Typed <sensitive> into element with index {index_for_logging}')
+							self.logger.info(f'Typed <sensitive> into element with index {index_for_logging}')
 					else:
-						self.logger.info(f'⌨️ Typed "{event.text}" into element with index {index_for_logging}')
+						self.logger.info(f'Typed "{event.text}" into element with index {index_for_logging}')
 					self.logger.debug(f'Element xpath: {element_node.xpath}')
 					return input_metadata  # Return coordinates if available
 				except Exception as e:
@@ -168,11 +168,11 @@ class DefaultActionWatchdog(BaseWatchdog):
 					# Log with sensitive data protection
 					if event.is_sensitive:
 						if event.sensitive_key_name:
-							self.logger.info(f'⌨️ Typed <{event.sensitive_key_name}> to the page as fallback')
+							self.logger.info(f'Typed <{event.sensitive_key_name}> to the page as fallback')
 						else:
-							self.logger.info('⌨️ Typed <sensitive> to the page as fallback')
+							self.logger.info('Typed <sensitive> to the page as fallback')
 					else:
-						self.logger.info(f'⌨️ Typed "{event.text}" to the page as fallback')
+						self.logger.info(f'Typed "{event.text}" to the page as fallback')
 					return None  # No coordinates available for fallback typing
 
 			# Note: We don't clear cached state here - let multi_act handle DOM change detection
@@ -209,13 +209,13 @@ class DefaultActionWatchdog(BaseWatchdog):
 				success = await self._scroll_element_container(element_node, pixels)
 				if success:
 					self.logger.debug(
-						f'📜 Scrolled element {index_for_logging} container {event.direction} by {event.amount} pixels'
+						f'Scrolled element {index_for_logging} container {event.direction} by {event.amount} pixels'
 					)
 
 					# CRITICAL: For iframe scrolling, we need to force a full DOM refresh
 					# because the iframe's content has changed position
 					if is_iframe:
-						self.logger.debug('🔄 Forcing DOM refresh after iframe scroll')
+						self.logger.debug('Forcing DOM refresh after iframe scroll')
 						# Note: We don't clear cached state here - let multi_act handle DOM change detection
 						# by explicitly rebuilding and comparing when needed
 
@@ -236,7 +236,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			# by explicitly rebuilding and comparing when needed
 
 			# Log success
-			self.logger.debug(f'📜 Scrolled {event.direction} by {event.amount} pixels')
+			self.logger.debug(f'Scrolled {event.direction} by {event.amount} pixels')
 			return None
 		except Exception as e:
 			raise
@@ -378,7 +378,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 
 			# If we still don't have quads, fall back to JS click
 			if not quads:
-				self.logger.warning('⚠️ Could not get element geometry from any method, falling back to JavaScript click')
+				self.logger.warning('WARNING: Could not get element geometry from any method, falling back to JavaScript click')
 				try:
 					result = await cdp_session.cdp_client.send.DOM.resolveNode(
 						params={'backendNodeId': backend_node_id},
@@ -461,7 +461,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			# TODO: do occlusion detection first, if element is not on the top, fire JS-based
 			# click event instead using xpath of x,y coordinate clicking, because we wont be able to click *through* occluding elements using x,y clicks
 			try:
-				self.logger.debug(f'👆 Dragging mouse over element before clicking x: {center_x}px y: {center_y}px ...')
+				self.logger.debug(f'Dragging mouse over element before clicking x: {center_x}px y: {center_y}px ...')
 				# Move mouse to element
 				await cdp_session.cdp_client.send.Input.dispatchMouseEvent(
 					params={
@@ -504,7 +504,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 					)
 					await asyncio.sleep(0.08)
 				except TimeoutError:
-					self.logger.debug('⏱️ Mouse down timed out (likely due to dialog), continuing...')
+					self.logger.debug('TIMER: Mouse down timed out (likely due to dialog), continuing...')
 					# Don't sleep if we timed out
 
 				# Mouse up
@@ -526,7 +526,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 				except TimeoutError:
 					self.logger.debug('⏱️ Mouse up timed out (possibly due to lag or dialog popup), continuing...')
 
-				self.logger.debug('🖱️ Clicked successfully using x,y coordinates')
+				self.logger.debug('MOUSE: Clicked successfully using x,y coordinates')
 				# Return coordinates as dict for metadata
 				return {'click_x': center_x, 'click_y': center_y}
 
@@ -776,7 +776,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 		"""Clear text field using multiple strategies, starting with the most reliable."""
 		try:
 			# Strategy 1: Direct JavaScript value setting (most reliable for modern web apps)
-			self.logger.debug('🧹 Clearing text field using JavaScript value setting')
+			self.logger.debug('Clearing text field using JavaScript value setting')
 
 			await cdp_session.cdp_client.send.Runtime.callFunctionOn(
 				params={
@@ -816,7 +816,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 
 		# Strategy 2: Triple-click + Delete (fallback for stubborn fields)
 		try:
-			self.logger.debug('🧹 Fallback: Clearing using triple-click + Delete')
+			self.logger.debug('Fallback: Clearing using triple-click + Delete')
 
 			# Get element center coordinates for triple-click
 			bounds_result = await cdp_session.cdp_client.send.Runtime.callFunctionOn(
@@ -887,7 +887,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			select_all_modifier = 4 if is_macos else 2  # Meta=4 (Cmd), Ctrl=2
 			modifier_name = 'Cmd' if is_macos else 'Ctrl'
 
-			self.logger.debug(f'🧹 Last resort: Clearing using {modifier_name}+A + Backspace')
+			self.logger.debug(f'Last resort: Clearing using {modifier_name}+A + Backspace')
 
 			# Select all text (Ctrl/Cmd+A)
 			await cdp_session.cdp_client.send.Input.dispatchKeyEvent(
@@ -988,7 +988,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 				self.logger.debug(f'Click focus failed: {e}')
 
 		# Both strategies failed
-		self.logger.warning('⚠️ All focus strategies failed')
+		self.logger.warning('WARNING: All focus strategies failed')
 		return False
 
 	async def _input_text_element_node_impl(
@@ -1043,7 +1043,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 				self.logger.debug(f'Using absolute_position coordinates: x={center_x:.1f}, y={center_y:.1f}')
 			else:
 				input_coordinates = None
-				self.logger.warning('⚠️ No absolute_position available for element')
+				self.logger.warning('WARNING: No absolute_position available for element')
 
 			# Ensure we have a valid object_id before proceeding
 			if not object_id:
@@ -1270,14 +1270,14 @@ class DefaultActionWatchdog(BaseWatchdog):
 				session_id=cdp_session.session_id,
 			)
 
-			success = result.get('result', {}).get('value', False)
+			success = result.get('result', {}).get('value', false)
 			if success:
-				self.logger.debug('✅ Framework events triggered successfully')
+				self.logger.debug('Framework events triggered successfully')
 			else:
-				self.logger.warning('⚠️ Some framework events may have failed to trigger')
+				self.logger.warning('Some framework events may have failed to trigger')
 
 		except Exception as e:
-			self.logger.warning(f'⚠️ Failed to trigger framework events: {type(e).__name__}: {e}')
+			self.logger.warning(f'Failed to trigger framework events: {type(e).__name__}: {e}')
 			# Don't raise - framework events are a best-effort enhancement
 
 	async def _scroll_with_cdp_gesture(self, pixels: int) -> bool:
@@ -1320,7 +1320,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 				session_id=session_id,
 			)
 
-			self.logger.debug(f'📄 Scrolled via CDP mouse wheel: {pixels}px')
+			self.logger.debug(f'Scrolled via CDP mouse wheel: {pixels}px')
 			return True
 
 		except Exception as e:
@@ -1455,7 +1455,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 
 			# Check if we can go back
 			if current_index <= 0:
-				self.logger.warning('⚠️ Cannot go back - no previous entry in history')
+				self.logger.warning('WARNING: Cannot go back - no previous entry in history')
 				return
 
 			# Navigate to the previous entry
@@ -1483,7 +1483,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 
 			# Check if we can go forward
 			if current_index >= len(entries) - 1:
-				self.logger.warning('⚠️ Cannot go forward - no next entry in history')
+				self.logger.warning('WARNING: Cannot go forward - no next entry in history')
 				return
 
 			# Navigate to the next entry
@@ -1643,7 +1643,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 						session_id=cdp_session.session_id,
 					)
 					await cdp_session.cdp_client.send.Input.dispatchKeyEvent(
-						params={
+					 params={
 							'type': 'keyUp',
 							'windowsVirtualKeyCode': vk_code,
 							'code': key_map.get(keys, keys),
@@ -1773,7 +1773,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 						await cdp_client.send.DOM.scrollIntoViewIfNeeded(params={'nodeId': node_id}, session_id=session_id)
 
 						found = True
-						self.logger.debug(f'📜 Scrolled to text: "{event.text}"')
+						self.logger.debug(f'Scrolled to text: "{event.text}"')
 						break
 
 				# Clean up search
@@ -1809,7 +1809,7 @@ class DefaultActionWatchdog(BaseWatchdog):
 			)
 
 			if js_result.get('result', {}).get('value'):
-				self.logger.debug(f'📜 Scrolled to text: "{event.text}" (via JS)')
+				self.logger.debug(f'Scrolled to text: "{event.text}" (via JS)')
 				return None
 			else:
 				self.logger.warning(f'⚠️ Text not found: "{event.text}"')
@@ -1831,10 +1831,35 @@ class DefaultActionWatchdog(BaseWatchdog):
 			# Get CDP session for this node
 			cdp_session = await self.browser_session.cdp_client_for_node(element_node)
 
+
+
 			# Convert node to object ID for CDP operations
 			try:
 				object_result = await cdp_session.cdp_client.send.DOM.resolveNode(
 					params={'backendNodeId': element_node.backend_node_id}, session_id=cdp_session.session_id
+
+
+
+			
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 				)
 				remote_object = object_result.get('object', {})
 				object_id = remote_object.get('objectId')
@@ -2008,10 +2033,10 @@ class DefaultActionWatchdog(BaseWatchdog):
 			msg += f'\n\nUse the exact text or value string (without quotes) in select_dropdown_option(index={index_for_logging}, text=...)'
 
 			if source_info == 'target':
-				self.logger.info(f'📋 Found {len(dropdown_data["options"])} dropdown options for index {index_for_logging}')
+				self.logger.info(f'Found {len(dropdown_data["options"])} dropdown options for index {index_for_logging}')
 			else:
 				self.logger.info(
-					f'📋 Found {len(dropdown_data["options"])} dropdown options for index {index_for_logging} in {source_info}'
+					f'Found {len(dropdown_data["options"])} dropdown options for index {index_for_logging} in {source_info}'
 				)
 
 			# Create structured memory for the response
