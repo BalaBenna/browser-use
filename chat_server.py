@@ -1,5 +1,6 @@
 import uvicorn
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, WebSocket
+from typing import Optional
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -7,6 +8,11 @@ from pydantic import BaseModel
 import asyncio
 import os
 from dotenv import load_dotenv
+from browser_use import Agent, ChatGoogle
+from custom_tools import CUSTOM_TOOLS
+from agent_session import SESSION_MANAGER
+import uuid
+import logging
 
 # ---
 # 1. Load environment variables from .env file
@@ -19,24 +25,47 @@ load_dotenv()
 if not os.getenv("GOOGLE_API_KEY"):
     raise ValueError("GOOGLE_API_KEY not found in .env file. Please add it.")
 
-from browser_use import Agent, ChatGoogle
+# ---
+# Configure logging
+# ---
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-def run_agent_query(query: str) -> str:
+def run_agent_query(query: str, session_id: str, websocket: Optional[WebSocket] = None) -> str:
+    """Runs the agent with a given query and session ID."""
+    # Get the session for this request
+    session = SESSION_MANAGER.get_session(session_id)
+
+    async def step_callback(agent_state, agent_output, step_index):
+        if websocket:
+            step_info = {
+                "step": step_index,
+                "thinking": agent_output.current_state.thinking,
+                "next_goal": agent_output.current_state.next_goal,
+                "action": [action.model_dump_json() for action in agent_output.action]
+            }
+            await websocket.send_json(step_info)
+
     # Create an Agent with the user query as the task
     agent = Agent(
         task=query,
         llm=ChatGoogle(model='gemini-flash-latest'),
         headless=True,  # Run the browser in headless mode
+        custom_tools=CUSTOM_TOOLS,  # Register the new tools
+        # Pass the session to the agent's context
+        tool_context={"session": session},
+        register_new_step_callback=step_callback,
     )
     # Run synchronously and get the result
     result = agent.run_sync()
 
     # Extract the final, human-readable response
-    if result and result.all_results:
+    if result and result.history:
         # Find the result from the 'done' action, which is usually the last one
-        for action_result in reversed(result.all_results):
-            if action_result.is_done:
-                return action_result.extracted_content
+        for history_item in reversed(result.history):
+            for action_result in history_item.result:
+                if action_result.is_done:
+                    return action_result.extracted_content or "No content extracted."
 
     # Fallback to the string representation if no 'done' action is found
     if hasattr(result, '__str__'):
@@ -61,6 +90,34 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 class ChatRequest(BaseModel):
     message: str
+    session_id: str | None = None
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            query = data.get("message")
+            session_id = data.get("session_id") or str(uuid.uuid4())
+
+            if not query:
+                continue
+
+            # This is a simplified approach. For production, you'd run the agent
+            # in a separate thread or process to avoid blocking.
+            # For this example, we'll run it directly but use the callback to send updates.
+            
+            # We are not awaiting the result here, as the updates are sent via callback
+            # The final result will be sent as the last message.
+            final_result = await asyncio.to_thread(run_agent_query, query, session_id, websocket)
+            
+            await websocket.send_json({"final_result": final_result, "session_id": session_id})
+
+    except Exception as e:
+        logger.error(f"WebSocket Error: {e}")
+    finally:
+        await websocket.close()
 
 @app.get("/", response_class=HTMLResponse)
 async def chat_page():
@@ -74,6 +131,7 @@ async def chat_page():
             #messages { height: 300px; overflow-y: auto; border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: #1a1d21; }
             .user { color: #7ecfff; }
             .qi { color: #baff7e; }
+            .step { color: #f0ad4e; border-left: 2px solid #f0ad4e; padding-left: 10px; margin-left: 5px; font-size: 0.9em; }
         </style>
     </head>
     <body>
@@ -89,6 +147,39 @@ async def chat_page():
             const form = document.getElementById('chat-form');
             const input = document.getElementById('user-input');
             const messages = document.getElementById('messages');
+            
+            const ws = new WebSocket(`ws://${location.host}/ws`);
+            let sessionId = null;
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.step) {
+                    let actionDetails = '';
+                    try {
+                        const actions = data.action.map(a => JSON.parse(a));
+                        actionDetails = actions.map(a => {
+                            const actionName = Object.keys(a)[0];
+                            const params = JSON.stringify(a[actionName]);
+                            return `<li><b>Action:</b> ${actionName}, <b>Params:</b> ${params}</li>`;
+                        }).join('');
+                    } catch (e) {
+                        actionDetails = '<li>Could not parse action details.</li>';
+                    }
+
+                    messages.innerHTML += `<div class='step'>` +
+                        `<b>Step ${data.step}</b><br/>` +
+                        `<em>Thinking:</em> ${data.thinking}<br/>` +
+                        `<em>Next Goal:</em> ${data.next_goal}<br/>` +
+                        `<ul>${actionDetails}</ul>` +
+                        `</div>`;
+                } else if (data.final_result) {
+                    messages.innerHTML += `<div class='qi'><b>QI:</b> ${data.final_result}</div>`;
+                    sessionId = data.session_id;
+                }
+                messages.scrollTop = messages.scrollHeight;
+            };
+
             form.onsubmit = async (e) => {
                 e.preventDefault();
                 const msg = input.value.trim();
@@ -96,14 +187,8 @@ async def chat_page():
                 messages.innerHTML += `<div class='user'><b>You:</b> ${msg}</div>`;
                 input.value = '';
                 messages.scrollTop = messages.scrollHeight;
-                const resp = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: msg })
-                });
-                const data = await resp.json();
-                messages.innerHTML += `<div class='qi'><b>QI:</b> ${data.reply}</div>`;
-                messages.scrollTop = messages.scrollHeight;
+                
+                ws.send(JSON.stringify({ message: msg, session_id: sessionId }));
             };
         </script>
     </body>
@@ -113,9 +198,13 @@ async def chat_page():
 @app.post("/chat")
 async def chat_api(req: ChatRequest):
     try:
-        # Call your agent logic here
-        reply = await asyncio.to_thread(run_agent_query, req.message)
-        return JSONResponse({"reply": reply})
+        # Use the provided session_id or generate a new one
+        session_id = req.session_id or str(uuid.uuid4())
+        
+        # Call your agent logic here, passing the session_id
+        reply = await asyncio.to_thread(run_agent_query, req.message, session_id)
+        
+        return JSONResponse({"reply": reply, "session_id": session_id})
     except Exception as e:
         # ---
         # 5. Add error handling to catch and log crashes
@@ -125,4 +214,4 @@ async def chat_api(req: ChatRequest):
 
 if __name__ == "__main__":
     # It's important to run the app directly for the shutdown hook to work
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8001)

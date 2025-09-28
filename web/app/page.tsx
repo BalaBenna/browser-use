@@ -11,6 +11,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null); // Add session state
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -28,10 +29,13 @@ export default function Home() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: userMsg.text }),
+        body: JSON.stringify({ message: userMsg.text, session_id: sessionId }), // Send session ID
       });
       const data = await resp.json();
       setMessages((msgs) => [...msgs, { sender: "qi", text: data.reply }]);
+      if (data.session_id) {
+        setSessionId(data.session_id); // Store new session ID
+      }
     } catch (err) {
       setMessages((msgs) => [...msgs, { sender: "qi", text: "Error: Could not reach backend." }]);
     }
