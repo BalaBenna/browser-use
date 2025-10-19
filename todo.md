@@ -1,10 +1,7 @@
-# Bus Ticket Booking Task
-- [x] Navigate to RedBus website
-- [ ] Input 'Hyderabad' as 'From' location
-- [ ] Input 'Pathapatanam' as 'To' location
-- [ ] Select date 2025-10-05
-- [ ] Search buses
-- [ ] Filter results for departure after 3 PM
-- [ ] Select a bus and proceed to booking
-- [ ] Input passenger details (name: Bala, age: 23, phone: 7032768742, email: balakrishnabenna3204@gmail.com)
-- [ ] Complete booking (if possible without payment) or reach payment step and report.
+# Python Tutorial Resources Compilation
+
+## Tasks:
+- [x] Navigate to a suitable article listing Python resources.
+- [x] Gathered resources 1-5 and saved to 'python_resources.md'.
+- [ ] Re-extract resources 6-9 and save to 'resources_6_9.md'.
+- [ ] Combine all collected data and call done.

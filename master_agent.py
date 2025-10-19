@@ -38,7 +38,7 @@ class MasterAgent:
         """
         await self._send_message_to_client("master_agent", "Creating a plan to solve the task...")
         plan = await self._create_plan()
-        self.history.append({"step": "Create Plan", "result": plan})
+        self.history.append({"step": "Create Plan", "result": str(plan)})
 
         for i, step in enumerate(plan.get("steps", [])):
             agent_name = step.get("agent")
@@ -66,6 +66,8 @@ class MasterAgent:
         """
         Creates a plan to solve the task.
         """
+        from browser_use import ChatGoogle
+        
         planning_prompt = f"""
         You are a master agent. Create a plan to solve the following task: "{self.task}"
         Break the task into steps, and for each step, specify the specialized agent to use.
@@ -77,21 +79,50 @@ class MasterAgent:
         {{
             "steps": [
                 {{
-                    "agent": "research_agent",
-                    "task": "Find the capital of France."
+                    "agent": "browser_agent",
+                    "task": "Navigate to the website and complete the requested task."
                 }}
             ]
         }}
         """
-        planning_agent = self._create_agent(planning_prompt)
-        result = await planning_agent.run()
-        clean_result = _extract_final_response(result)
+        
         try:
-            # The plan is expected to be a clean JSON string from the LLM.
-            return json.loads(clean_result)
-        except json.JSONDecodeError:
-            await self._send_message_to_client("master_agent", "Error: The planning agent returned an invalid plan. I will try to proceed without a plan.")
-            return {"steps": []}
+            # Use the LLM directly instead of creating a browser agent
+            from browser_use.llm.messages import UserMessage
+            llm = ChatGoogle(model='gemini-flash-latest')
+            message = UserMessage(content=planning_prompt)
+            response = await llm.ainvoke([message])
+            
+            # Extract the response text
+            response_text = response.completion
+            
+            # Try to find JSON in the response
+            import re
+            json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
+            if json_match:
+                plan_data = json.loads(json_match.group())
+                return plan_data
+            else:
+                # Fallback: create a simple browser-based plan
+                return {
+                    "steps": [
+                        {
+                            "agent": "browser_agent",
+                            "task": f"Complete the following task: {self.task}"
+                        }
+                    ]
+                }
+                
+        except Exception as e:
+            await self._send_message_to_client("master_agent", f"Error creating plan: {e}. Using fallback plan.")
+            return {
+                "steps": [
+                    {
+                        "agent": "browser_agent", 
+                        "task": f"Complete the following task: {self.task}"
+                    }
+                ]
+            }
 
     async def _execute_sub_task(self, agent_name: str, task: str) -> Any:
         """
@@ -103,9 +134,11 @@ class MasterAgent:
 
         specialized_agent = self._create_agent(task)
         
-        # Register the tools for the specialized agent.
-        for tool in agent_config["tools"]:
-            specialized_agent.tools.registry.action(f"{agent_name} tool")(tool["function"])
+        # Register the tools for the specialized agent (if any)
+        tools = agent_config.get("tools", [])
+        if tools:
+            for tool in tools:
+                specialized_agent.tools.registry.action(f"{agent_name} tool")(tool["function"])
 
         return await specialized_agent.run()
 
