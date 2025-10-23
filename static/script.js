@@ -3,7 +3,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const userInput = document.getElementById("user-input");
     const sendButton = document.getElementById("send-button");
 
-    const ws = new WebSocket(`ws://${location.hostname}:8001/ws`);
+    const ws = new WebSocket(`ws://${location.hostname}:3005/ws`);
     let sessionId = null;
 
     ws.onopen = () => {
